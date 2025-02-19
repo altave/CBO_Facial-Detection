@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./rabbitmq_ca.pem:/etc/ssl/certs/rabbitmq_ca.pem:ro
+      - ./rabbitmq.config:/etc/rabbitmq/rabbitmq.config:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    env_file:
+      - environment_variables.env
+    networks:
+      - default
+    ports:
+      - "5000:5000"
+    volumes:
+      - /home/pi/Facial_Detection:/app/facial_detection
+    restart: unless-stopped
+    command: python src/main.py
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  default:
+
